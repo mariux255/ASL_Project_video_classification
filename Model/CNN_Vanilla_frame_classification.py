@@ -1,5 +1,3 @@
-import tqdm
-from preprocessing import exctract_json_data, define_categories
 import numpy as np
 import os
 import cv2
