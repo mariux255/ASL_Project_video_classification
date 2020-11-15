@@ -14,7 +14,7 @@ import numpy as np
 
 
 class MyCustomDataset(Dataset):
-    def __init__(self, category, json_file_path="/Users/mjo/Desktop/WLASL/WLASL_v0.3.json", video_file_path="/Users/mjo/Desktop/WLASL/WLASL2000", frame_location="/Users/mjo/Desktop/WLASL/Processed_data/"):
+    def __init__(self, category, json_file_path="/scratch/s174411/data/WLASL/WLASL_v0.3.json", video_file_path="/scratch/s174411/data/WLASL/WLASL2000", frame_location="/scratch/s174411/data/WLASL/Processed_data/"):
         exctract_frames = False
         self.frame_location = frame_location
         # Defining count_dictionary which contains the number of videos for each class
