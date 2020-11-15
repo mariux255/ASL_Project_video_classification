@@ -11,6 +11,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision import transforms, datasets
 from Dataloader.WSASL_Videos_load import MyCustomDataset
 from Model.CNN_Vanilla_frame_classification import Net
+from Model.C3D_model import C3D
 from torch.utils.data import random_split
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
@@ -24,7 +25,7 @@ trainset, validset = random_split(dataset, [train_size, val_size])
 dataloader_train = DataLoader(trainset, batch_size=20, shuffle=True, num_workers=2)
 dataloader_val = DataLoader(validset, batch_size=20, shuffle=True, num_workers=2)
 
-net = Net()
+net = C3D(100, pretrained=True)
 net = net.to(device)
 
 
@@ -49,9 +50,9 @@ for epoch in range(2):  # loop over the dataset multiple times
     training_loss = 0.0
     for i,(inputs, labels) in enumerate(dataloader_train):
         # get the inputs; data is a list of [inputs, labels]
+        print(type(inputs[0][0]))
         inputs = inputs.view(-1,3,buffer_size,256,256)
-        print(inputs)
-        break
+        
         inputs = inputs.to(device)
         labels = labels.to(device)
         # zero the parameter gradients
