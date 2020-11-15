@@ -98,25 +98,18 @@ class MyCustomDataset(Dataset):
         #print("int for drink label: ", self.labels_iterated['drink'])
     def __getitem__(self, index):
         buffer, label = self.training_data[index]
-        buffer = to_tensor(buffer)
+        buffer = self.to_tensor(buffer)
         return [buffer, label]
 
 
     def __len__(self):
-        total = 0
-        folders = ([name for name in os.listdir(os.path.join(self.frame_location,"100/"))
-                    if os.path.isdir(os.path.join(self.frame_location,"100/",name))])
-        for folder in folders:
-            contents = os.listdir(os.path.join(self.frame_location,"100/",folder))
-            total += len(contents)
-        #print(total)
-        return total
+        return self.total_videos()
 
     def total_videos(self):
 
 
         sum_count = 0
-        for label in self.labels_100:
+        for label in self.labels_x:
             for video in self.video_id_dictionary[label]:
                 sum_count += 1
         return sum_count
@@ -132,26 +125,60 @@ class MyCustomDataset(Dataset):
 
         data_directory = ("{}/{}".format(frame_location, len(labels_x)))
         num_labels = len(labels_x)
+        #print(num_labels)
         for label in (labels_x):
             for video in self.video_id_dictionary[label]:
                 buffer = []
                 path = os.path.join(data_directory, video)
                 number_of_frames = len([file for file in os.listdir(path) if "jpg" in file])
-                save_frequency = np.floor(number_of_frames/buffer_size)
-                save_start = (np.floor(number_of_frames/save_frequency)-buffer_size-1)*save_frequency
-                for i, file in enumerate(os.listdir(path)):
-                    if i>save_start and i%save_frequency == 0:
+                try:
+                    save_frequency = np.floor(number_of_frames/buffer_size)
+                    if number_of_frames % save_frequency == 0:
+                        save_start = 0
+                    else:
+                        save_start = save_frequency
+                    #print(f"Video:", video, "Number of frames:", number_of_frames, "Save_frequency:", save_frequency, "Save start:", save_start)
+                    if number_of_frames % save_frequency  != 0 or number_of_frames / save_frequency > buffer_size:
+                        #print("number:", np.ceil(number_of_frames/save_frequency))
+                        #print(video)
+                        #print(save_frequency)
+                        save_start = (np.ceil(number_of_frames/save_frequency)-buffer_size)*save_frequency
+                        #print(f"Video:", video, "Number of frames:", number_of_frames, "Save_frequency:", save_frequency, "Save start:", save_start)
+                except Exception as e:
+                    print(e)
+                to_repeat = False   
+                if number_of_frames < buffer_size:
+                    repeat = buffer_size - number_of_frames
+                    to_repeat = True
+                    save_frequency = 1
+                    save_start = 1
+                #print(f"Video:", video, "Number of frames:", number_of_frames, "Save_frequency:", save_frequency, "Save start:", save_start)
+                counter = 1
+                buffer = np.empty((buffer_size, 256, 256, 3), np.dtype('float32'))
+                index = 0
+                for file in (os.listdir(path)):
+                    if (counter % save_frequency == 0 and counter > save_start) or (counter % save_frequency == 0 and counter >= save_start and number_of_frames % save_frequency != 0):
                         if "jpg" in file:
                             try:
                                 path = os.path.join(data_directory, video, file)
-                                img = cv2.imread(path)
-                                buffer.append(torch.Tensor(img))
+                                img = np.array(cv2.imread(path)).astype(np.float64)
+                                #buffer.append((img))
+                                buffer[index] = img
+                                index += 1
+                                if counter == number_of_frames and to_repeat == True:
+                                    for i in range(repeat+1):
+                                        #buffer.append((img))
+                                        buffer[index] = img
+                                        index += 1
                             except Exception as e:
                                 print(e)
                                 pass
+                    counter += 1
                 if len(buffer) != buffer_size:
                     print("Buffer is not of the right size")
-                self.training_data.append([torch.Tensor(buffer),self.labels_iterated[label]])
+                    print("video:",video ,len(buffer))
+                    print(f"Video:", video, "Number of frames:", number_of_frames, "Save_frequency:", save_frequency, "Save start:", save_start)
+                self.training_data.append([(np.asarray(buffer)),self.labels_iterated[label]])
         
 
 
