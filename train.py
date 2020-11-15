@@ -16,7 +16,7 @@ from Model.CNN_Vanilla_frame_classification import Net
 from torch.utils.data import random_split
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
-
+buffer_size = 16
 dataset = MyCustomDataset('labels_100')
 dataset_size = (len(dataset))
 
@@ -37,8 +37,6 @@ criterion = criterion.to(device)
 def accuracy(ys, ts):
     y = torch.argmax(ys, dim = 1)
     x = ts
-    print("t:", x)
-    print("y:", y)
     correct = 0
     for i in range(len(y)):
         if y[i] == x[i]:
@@ -53,7 +51,9 @@ for epoch in range(2):  # loop over the dataset multiple times
     training_loss = 0.0
     for i,(inputs, labels) in enumerate(dataloader_train):
         # get the inputs; data is a list of [inputs, labels]
-        inputs = inputs.view(-1, 1, 256, 256)
+        inputs = inputs.view(-1,3,buffer_size,256,256)
+        print(inputs)
+        break
         inputs = inputs.to(device)
         labels = labels.to(device)
         # zero the parameter gradients
@@ -76,7 +76,7 @@ for epoch in range(2):  # loop over the dataset multiple times
     valError = 0
     for i, (inputs,labels) in enumerate(dataloader_val):
         with torch.no_grad():
-            inputs = inputs.view(-1,1,256,256)
+            inputs = inputs.view(-1,3,buffer_size,256,256)
             inputs = inputs.to(device)
             labels = labels.to(device)
             prediction = net(inputs)
