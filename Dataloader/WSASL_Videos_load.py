@@ -12,6 +12,8 @@ import cv2
 import os
 import numpy as np
 
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
 class MyCustomDataset(Dataset):
     def __init__(self, category, json_file_path="/scratch/s174411/data/WLASL/WLASL_v0.3.json", video_file_path="/scratch/s174411/data/WLASL/WLASL2000", frame_location="/scratch/s174411/data/WLASL/Processed_data/"):
@@ -121,7 +123,7 @@ class MyCustomDataset(Dataset):
     # 1. Load only 16 frames into the buffer.
     # 2. Resize each frame to 224?
     # 3. One video has a label. So a batch of 16 frames is assigned a class.
-    def make_training_data(self, labels_x,frame_location,buffer_size = 16):
+    def make_training_data(self, labels_x,frame_location,buffer_size = 16,image_height = 112, image_width = 112):
 
         data_directory = ("{}/{}".format(frame_location, len(labels_x)))
         num_labels = len(labels_x)
@@ -154,7 +156,7 @@ class MyCustomDataset(Dataset):
                     save_start = 1
                 #print(f"Video:", video, "Number of frames:", number_of_frames, "Save_frequency:", save_frequency, "Save start:", save_start)
                 counter = 1
-                buffer = np.empty((buffer_size, 256, 256, 3), np.dtype('float32'))
+                buffer = np.empty((buffer_size, image_height, image_width, 3), np.dtype('float32'))
                 index = 0
                 for file in (os.listdir(path)):
                     if (counter % save_frequency == 0 and counter > save_start) or (counter % save_frequency == 0 and counter >= save_start and number_of_frames % save_frequency != 0):
@@ -162,6 +164,12 @@ class MyCustomDataset(Dataset):
                             try:
                                 path = os.path.join(data_directory, video, file)
                                 img = np.array(cv2.imread(path)).astype(np.float64)
+
+                                #img = img[:, :, [2, 1, 0]]
+                                #img = (cv2.imread(path, cv2.IMREAD_GRAYSCALE))#.astype(np.float64)
+
+                                img = cv2.resize(img, (image_height, image_width))
+
                                 #buffer.append((img))
                                 buffer[index] = img
                                 index += 1
