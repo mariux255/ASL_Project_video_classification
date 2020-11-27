@@ -17,10 +17,17 @@ from Model.C3D_model import C3D
 from Model.cnnlstm import ConvLSTM
 from Model.pytorch_i3d import InceptionI3d
 from torch.utils.data import random_split
+
+
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 buffer_size = 16
-dataset = MyCustomDataset('labels_100',json_file_path="/Users/mjo/Desktop/WLASL/WLASL_v0.3.json", video_file_path="/Users/mjo/Desktop/WLASL/WLASL2000", frame_location="/Users/mjo/Desktop/WLASL/Processed_data/")
+dataset = MyCustomDataset(category='labels_100')
+
+#dataset = MyCustomDataset(category='labels_100',json_file_path="/Users/mjo/Desktop/WLASL/WLASL_v0.3.json", video_file_path="/Users/mjo/Desktop/WLASL/WLASL2000", frame_location="/Users/mjo/Desktop/WLASL/Processed_data/")
+
 dataset_size = (len(dataset))
 
 val_size = int(np.floor(dataset_size * 0.1))
@@ -29,14 +36,7 @@ trainset, validset = random_split(dataset, [train_size, val_size])
 dataloader_train = DataLoader(trainset, batch_size=20, shuffle=True, num_workers=2)
 dataloader_val = DataLoader(validset, batch_size=20, shuffle=True, num_workers=2)
 
-net = ConvLSTM(
-        num_classes=100,
-        latent_dim=512,
-        lstm_layers=1,
-        hidden_dim=1024,
-        bidirectional=True,
-        attention=True,
-    )
+net = C3D(num_classes=100,pretrained=False)
 net = net.to(device)
 
 
@@ -69,13 +69,19 @@ with open(filename,'w') as csvfile:
         for i,(inputs, labels) in enumerate(dataloader_train):
             # get the inputs; data is a list of [inputs, labels]
             print(type(inputs[0][0]))
-            inputs = inputs.view(-1,3,buffer_size,224,224)
-            
+            inputs = inputs.view(-1,3,buffer_size,112,112)
+            inputs = inputs.float()
             inputs = inputs.to(device)
             labels = labels.to(device)
             # zero the parameter gradients
             optimizer.zero_grad()
-            
+            # for j in range(len(inputs)):
+            #     temp = inputs[j]
+            #     temp = temp.permute(1,2,3,0)
+            #     for h in range(len(temp)):
+            #         img = temp[h]
+            #         imgplot = plt.imshow(img)
+            #         plt.show()
             # forward + backward + optimize
             
             outputs = net(inputs)
