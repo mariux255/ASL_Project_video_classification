@@ -34,12 +34,13 @@ dataset_size = (len(dataset))
 val_size = int(np.floor(dataset_size * 0.1))
 train_size = int(dataset_size - val_size)
 trainset, validset = random_split(dataset, [train_size, val_size])
-dataloader_train = DataLoader(trainset, batch_size=2, shuffle=True, num_workers=2)
-dataloader_val = DataLoader(validset, batch_size=2, shuffle=True, num_workers=2)
+dataloader_train = DataLoader(trainset, batch_size=30, shuffle=True, num_workers=4)
+dataloader_val = DataLoader(validset, batch_size=30, shuffle=True, num_workers=4)
 
 net = I3D()
-net.load_state_dict(torch.load('Model/rgb_imagenet.pkl'))
+#net.load_state_dict(torch.load('Model/rgb_imagenet.pkl'))
 net.replace_logits(100)
+net = nn.DataParallel(net)
 net = net.to(device)
 
 
@@ -77,6 +78,7 @@ with open(filename,'w') as csvfile:
             # for j in range(len(inputs)):
             #     temp = inputs[j]
             #     temp = temp.permute(1,2,3,0)
+            
             #     for h in range(len(temp)):
             #         img = temp[h]
             #         imgplot = plt.imshow(img)
@@ -93,8 +95,8 @@ with open(filename,'w') as csvfile:
             outputs = net(inputs)
             rgb_score, rgb_logits = outputs
             outputs = rgb_logits
-            print(outputs.shape)
-            print(labels.shape)
+            #print(outputs.shape)
+            #print(labels.shape)
             loss = criterion(outputs, labels)
             #print(loss)
             loss.backward()
