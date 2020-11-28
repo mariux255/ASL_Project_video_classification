@@ -7,12 +7,12 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-
+import natsort 
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 class MyCustomDataset(Dataset):
-    def __init__(self, category = "labels_100", json_file_path="/scratch/s174411/data/WLASL/WLASL_v0.3.json", video_file_path="/scratch/s174411/data/WLASL/WLASL2000", frame_location="/scratch/s174411/data/WLASL/Processed_data/"):
+    def __init__(self, category = "labels_100", json_file_path="/scratch/s174411/data/WLASL/WLASL_v0.3.json", frame_location="/scratch/s174411/data/WLASL/Processed_data"):
         self.frame_location = frame_location
         # Defining count_dictionary which contains the number of videos for each class
         # and defining video_id_dictionary which has all of the video id's for each class.
@@ -40,13 +40,22 @@ class MyCustomDataset(Dataset):
 
     def __getitem__(self, index):
         buffer, label = self.training_data[index]
-
-        buffer = self.to_tensor(buffer)
+        images = []
+        for i in range(64):
+            path = buffer[i]
+            #print("PATH: ", path)
+            img = np.array(cv2.imread(path))
+            img = cv2.resize(img, (224, 224))
+            img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+            img = img/255
+            images.append(img)
+        images = np.array(images)
+        images = self.to_tensor(images)
         #temp = buffer.transpose(1,2,3,0)
         #img = temp[0]
         #imgplot = plt.imshow(img)
         #plt.show()
-        return [buffer, label]
+        return [images, label]
 
 
     def __len__(self):
@@ -62,13 +71,13 @@ class MyCustomDataset(Dataset):
         return sum_count
     
     def to_tensor(self, buffer):
-        return buffer.transpose(3, 0, 1, 2)
+        return torch.from_numpy(buffer.transpose(3, 0, 1, 2))
 
     # Changes needed to be made from original version.
     # 1. Load only 16 frames into the buffer.
     # 2. Resize each frame to 224?
     # 3. One video has a label. So a batch of 16 frames is assigned a class.
-    def make_training_data(self, labels_x,frame_location,buffer_size = 16,image_height = 112, image_width = 112):
+    def make_training_data(self, labels_x,frame_location,buffer_size = 64,image_height = 112, image_width = 112):
 
         data_directory = ("{}/{}".format(frame_location, len(labels_x)))
         num_labels = len(labels_x)
@@ -100,22 +109,26 @@ class MyCustomDataset(Dataset):
                 #buffer = np.empty((buffer_size, image_height, image_width, 3), np.dtype('float32'))
                 buffer = []
                 index = 0
-                for file in (os.listdir(path)):
+                fff = natsort.natsorted(os.listdir(path),reverse=False)
+
+                for file in fff:
                     if (counter % save_frequency == 0 and counter > save_start) or (counter % save_frequency == 0 and counter >= save_start and number_of_frames % save_frequency != 0):
                         if "jpg" in file:
                             try:
                                 path = os.path.join(data_directory, video, file)
-                                img = np.array(cv2.imread(path))
-                                img = cv2.resize(img, (image_height, image_width))
-                                img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-                                img = img/255
-                                buffer.append(img)
+                                #img = np.array(cv2.imread(path))
+                                #img = cv2.resize(img, (image_height, image_width))
+                                #img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+                                #img = img/255
+                                buffer.append(path)
+                                #print(path)
                                 #buffer[index] = img
                                 index += 1
                                 if counter == number_of_frames and to_repeat == True:
                                     for i in range(repeat+1):
                                         #buffer[index] = img
-                                        buffer.append(img)
+                                        #buffer.append(img)
+                                        buffer.append(path)
                                         index += 1
                             except Exception as e:
                                 print(e)

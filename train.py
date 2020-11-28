@@ -16,6 +16,7 @@ from Model.CNN_Vanilla_frame_classification import Net
 from Model.C3D_model import C3D
 from Model.cnnlstm import ConvLSTM
 from Model.pytorch_i3d import InceptionI3d
+from Model.I3D_Pytorch import I3D
 from torch.utils.data import random_split
 
 
@@ -23,25 +24,27 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
-buffer_size = 16
+buffer_size = 64
 dataset = MyCustomDataset(category='labels_100')
 
-#dataset = MyCustomDataset(category='labels_100',json_file_path="/Users/mjo/Desktop/WLASL/WLASL_v0.3.json", video_file_path="/Users/mjo/Desktop/WLASL/WLASL2000", frame_location="/Users/mjo/Desktop/WLASL/Processed_data/")
+#dataset = MyCustomDataset(category='labels_100',json_file_path="/home/marius/Documents/Projects/WLASL_v0.3.json", frame_location="/home/marius/Documents/Projects/Processed_data")
 
 dataset_size = (len(dataset))
 
 val_size = int(np.floor(dataset_size * 0.1))
 train_size = int(dataset_size - val_size)
 trainset, validset = random_split(dataset, [train_size, val_size])
-dataloader_train = DataLoader(trainset, batch_size=20, shuffle=True, num_workers=2)
-dataloader_val = DataLoader(validset, batch_size=20, shuffle=True, num_workers=2)
+dataloader_train = DataLoader(trainset, batch_size=2, shuffle=True, num_workers=2)
+dataloader_val = DataLoader(validset, batch_size=2, shuffle=True, num_workers=2)
 
-net = C3D(num_classes=100,pretrained=False)
+net = I3D()
+net.load_state_dict(torch.load('Model/rgb_imagenet.pkl'))
+net.replace_logits(100)
 net = net.to(device)
 
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(net.parameters(), lr=0.001)
+optimizer = optim.SGD(net.parameters(), lr=0.1, momentum = 0.9, weight_decay= 0.0000001)
 criterion = criterion.to(device)
 
 def accuracy(ys, ts):
@@ -68,13 +71,9 @@ with open(filename,'w') as csvfile:
         running_acc = 0
         for i,(inputs, labels) in enumerate(dataloader_train):
             # get the inputs; data is a list of [inputs, labels]
-            print(type(inputs[0][0]))
-            inputs = inputs.view(-1,3,buffer_size,112,112)
+            inputs = inputs.view(-1,3,buffer_size,224,224)
             inputs = inputs.float()
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-            # zero the parameter gradients
-            optimizer.zero_grad()
+
             # for j in range(len(inputs)):
             #     temp = inputs[j]
             #     temp = temp.permute(1,2,3,0)
@@ -82,18 +81,27 @@ with open(filename,'w') as csvfile:
             #         img = temp[h]
             #         imgplot = plt.imshow(img)
             #         plt.show()
-            # forward + backward + optimize
+
+            labels = torch.LongTensor(labels)
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            # zero the parameter gradients
+            optimizer.zero_grad()
+
+            #forward + backward + optimize
             
             outputs = net(inputs)
-            value, index = (torch.max(outputs,0))
-            value, index = (torch.max(labels,0))
-            preds = torch.max(outputs, 1)[1]
-
-            loss = criterion(outputs.view(20,100), torch.LongTensor(labels))
+            rgb_score, rgb_logits = outputs
+            outputs = rgb_logits
+            print(outputs.shape)
+            print(labels.shape)
+            loss = criterion(outputs, labels)
+            #print(loss)
             loss.backward()
             training_loss += loss.item()
             optimizer.step()
             running_acc += accuracy(outputs,labels)
+            print(f"Training phase, Epoch: {epoch}. Loss: {training_loss/(i+1)}. Accuracy: {running_acc/(i+1)}.")
             if i % 30 == 0:
                 csvwriter.writerow(['{}'.format(Identification),'{}'.format("Training"),'{}'.format(epoch),'{}'.format(training_loss/(i+1)),'{}'.format(running_acc/(i+1))])
                 print(f"Training phase, Epoch: {epoch}. Loss: {training_loss/(i+1)}. Accuracy: {running_acc/(i+1)}.")

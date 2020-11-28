@@ -186,7 +186,7 @@ class InceptionI3d(nn.Module):
         'Predictions',
     )
 
-    def __init__(self, num_classes=100, spatial_squeeze=True,
+    def __init__(self, num_classes=400, spatial_squeeze=True,
                  final_endpoint='Logits', name='inception_i3d', in_channels=3, dropout_keep_prob=0.5):
         """Initializes I3D model instance.
         Args:
@@ -328,6 +328,8 @@ class InceptionI3d(nn.Module):
         if self._spatial_squeeze:
             logits = x.squeeze(3).squeeze(3)
         # logits is batch X time X classes, which is what we want to work with
+        #averaged_logits = torch.mean(logits, 2)
+        #logits = averaged_logits
         return logits
         
 
