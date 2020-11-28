@@ -328,9 +328,9 @@ class InceptionI3d(nn.Module):
         if self._spatial_squeeze:
             logits = x.squeeze(3).squeeze(3)
         # logits is batch X time X classes, which is what we want to work with
-        #averaged_logits = torch.mean(logits, 2)
+        averaged_logits = torch.mean(logits, 2)
         #logits = averaged_logits
-        return logits
+        return logits , averaged_logits
         
 
     def extract_features(self, x):

@@ -47,7 +47,7 @@ class MyCustomDataset(Dataset):
             img = np.array(cv2.imread(path))
             img = cv2.resize(img, (224, 224))
             img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-            img = img/255
+            #img = img/255
             images.append(img)
         images = np.array(images)
         images = self.to_tensor(images)
