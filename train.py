@@ -65,7 +65,7 @@ with open(filename,'w') as csvfile:
     Identification = 1
     csvwriter = csv.writer(csvfile)
     csvwriter.writerow(headers)
-    for epoch in range(2):  # loop over the dataset multiple times
+    for epoch in range(10):  # loop over the dataset multiple times
 
         net.train()
         training_loss = 0.0
@@ -102,7 +102,11 @@ with open(filename,'w') as csvfile:
             loss.backward()
             training_loss += loss.item()
             optimizer.step()
-            running_acc += accuracy(outputs,labels)
+            #running_acc += accuracy(outputs,labels)
+            _,predicted = torch.max(outputs.data,1)
+            correct = (predicted == labels).sum().item()
+            running_acc += (correct/(labels.size(0)))
+
             print(f"Training phase, Epoch: {epoch}. Loss: {training_loss/(i+1)}. Accuracy: {running_acc/(i+1)}.")
             if i % 30 == 0:
                 csvwriter.writerow(['{}'.format(Identification),'{}'.format("Training"),'{}'.format(epoch),'{}'.format(training_loss/(i+1)),'{}'.format(running_acc/(i+1))])
@@ -116,12 +120,17 @@ with open(filename,'w') as csvfile:
                 inputs = inputs.view(-1,3,buffer_size,224,224)
                 inputs = inputs.to(device)
                 labels = labels.to(device)
-                prediction = net(inputs)
+                rgb_score, rgb_logits = outputs
+                prediction = rgb_logits
                 loss = criterion(prediction, labels)
-                running_acc += accuracy(outputs,labels)
+                _,predicted = torch.max(prediction.data,1)
+                correct = (predicted == labels).sum().item()
+                running_acc += (correct/(labels.size(0)))
+
+                #running_acc += accuracy(outputs,labels)
                 valError += loss.item()
             if i % 15 == 0:
-                csvwriter.writerow(['{}'.format(Identification),'{}'.format("Training"),'{}'.format(epoch),'{}'.format(valError/(i+1)),'{}'.format(running_acc/(i+1))])
-                print(f"Training phase, Epoch: {epoch}. Loss: {training_loss/(i+1)}. Accuracy: {running_acc/(i+1)}.")
+                csvwriter.writerow(['{}'.format(Identification),'{}'.format("Validation"),'{}'.format(epoch),'{}'.format(valError/(i+1)),'{}'.format(running_acc/(i+1))])
+                print(f"Validation phase, Epoch: {epoch}. Loss: {valError/(i+1)}. Accuracy: {running_acc/(i+1)}.")
                 Identification += 1
 print('Finished Training')
