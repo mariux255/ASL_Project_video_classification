@@ -118,6 +118,7 @@ with open(filename,'w') as csvfile:
         for i, (inputs,labels) in enumerate(dataloader_val):
             with torch.no_grad():
                 inputs = inputs.view(-1,3,buffer_size,224,224)
+                inputs = inputs.float()
                 inputs = inputs.to(device)
                 labels = labels.to(device)
                 outputs = net(inputs)
