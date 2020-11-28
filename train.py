@@ -25,18 +25,18 @@ import matplotlib.image as mpimg
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 buffer_size = 64
-#dataset = MyCustomDataset(category='labels_100')
+dataset = MyCustomDataset(category='labels_100')
 
-dataset = MyCustomDataset(category='labels_100',json_file_path="/home/marius/Documents/Projects/WLASL_v0.3.json", frame_location="/home/marius/Documents/Projects/Processed_data")
+#dataset = MyCustomDataset(category='labels_100',json_file_path="/home/marius/Documents/Projects/WLASL_v0.3.json", frame_location="/home/marius/Documents/Projects/Processed_data")
 
 dataset_size = (len(dataset))
 
-val_size = int(np.floor(dataset_size * 0.1))
+val_size = int(np.floor(dataset_size * 0.2))
 train_size = int(dataset_size - val_size)
 trainset, validset = random_split(dataset, [train_size, val_size])
-dataloader_train = DataLoader(trainset, batch_size=30, shuffle=True, num_workers=4)
-dataloader_val = DataLoader(validset, batch_size=30, shuffle=True, num_workers=4)
-net = InceptionI3d(num_classes=100)
+dataloader_train = DataLoader(trainset, batch_size=25, shuffle=True, num_workers=4)
+dataloader_val = DataLoader(validset, batch_size=25, shuffle=True, num_workers=4)
+net = InceptionI3d(num_classes=400)
 #net = C3D(num_classes = 100, pretrained = False)
 net.load_state_dict(torch.load('Model/rgb_imagenet.pt'))
 net.replace_logits(100)
@@ -45,9 +45,9 @@ net = net.to(device)
 
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=0.01,momentum =0.9)
+optimizer = optim.SGD(net.parameters(), lr=0.01,momentum = 0.9,weight_decay=0.0000001)
 criterion = criterion.to(device)
-scheduler = optim.lr_scheduler.StepLR(optimizer,step_size = 10,gamma =0.1)
+scheduler = optim.lr_scheduler.StepLR(optimizer,step_size = 20,gamma =0.1)
 def accuracy(ys, ts):
     y = torch.argmax(ys, dim = 1)
     x = ts
@@ -65,7 +65,7 @@ with open(filename,'w') as csvfile:
     Identification = 1
     csvwriter = csv.writer(csvfile)
     csvwriter.writerow(headers)
-    for epoch in range(20):  # loop over the dataset multiple times
+    for epoch in range(30):  # loop over the dataset multiple times
 
         net.train()
         training_loss = 0.0
@@ -89,20 +89,20 @@ with open(filename,'w') as csvfile:
             inputs = inputs.to(device)
             labels = labels.to(device)
             # zero the parameter gradients
-            #optimizer.zero_grad()
+            optimizer.zero_grad()
 
             #forward + backward + optimize
                 
             outputs = net(inputs)
-            #rgb_score, rgb_logits = outputs
-            #outputs = rgb_logits
+            rgb_score, rgb_logits = outputs
+            outputs = rgb_logits
             #print(outputs.shape)
             #print(labels.shape)
             loss = criterion(outputs, labels)
-            print(loss)
-            #loss.backward()
+            #print(loss)
+            loss.backward()
             training_loss += loss.item()
-            #optimizer.step()
+            optimizer.step()
             #running_acc += accuracy(outputs,labels)
             _,predicted = torch.max(outputs.data,1)
             correct = (predicted == labels).sum().item()
@@ -124,8 +124,8 @@ with open(filename,'w') as csvfile:
                 labels = labels.to(device)
                 outputs = net(inputs)
                 prediction = outputs
-                #rgb_score, rgb_logits = outputs
-                #prediction = rgb_logits
+                rgb_score, rgb_logits = outputs
+                prediction = rgb_logits
                 loss = criterion(prediction, labels)
                 _,predicted = torch.max(prediction.data,1)
                 correct = (predicted == labels).sum().item()
