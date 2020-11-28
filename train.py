@@ -47,7 +47,7 @@ net = net.to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(net.parameters(), lr=0.1, weight_decay= 0.0000001)
 criterion = criterion.to(device)
-
+scheduler = optim.lr_scheduler.StepLR(optimizer,step_size = 3,gamma =0.1)
 def accuracy(ys, ts):
     y = torch.argmax(ys, dim = 1)
     x = ts
@@ -133,4 +133,5 @@ with open(filename,'w') as csvfile:
                 csvwriter.writerow(['{}'.format(Identification),'{}'.format("Validation"),'{}'.format(epoch),'{}'.format(valError/(i+1)),'{}'.format(running_acc/(i+1))])
                 print(f"Validation phase, Epoch: {epoch}. Loss: {valError/(i+1)}. Accuracy: {running_acc/(i+1)}.")
                 Identification += 1
+        scheduler.step()
 print('Finished Training')
