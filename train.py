@@ -120,6 +120,7 @@ with open(filename,'w') as csvfile:
                 inputs = inputs.view(-1,3,buffer_size,224,224)
                 inputs = inputs.to(device)
                 labels = labels.to(device)
+                outputs = net(inputs)
                 rgb_score, rgb_logits = outputs
                 prediction = rgb_logits
                 loss = criterion(prediction, labels)
