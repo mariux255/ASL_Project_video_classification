@@ -45,7 +45,7 @@ net = net.to(device)
 
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=0.1, momentum = 0.9, weight_decay= 0.0000001)
+optimizer = optim.Adam(net.parameters(), lr=0.1, weight_decay= 0.0000001)
 criterion = criterion.to(device)
 
 def accuracy(ys, ts):
