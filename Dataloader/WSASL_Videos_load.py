@@ -7,7 +7,7 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-import natsort 
+import natsort
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -41,11 +41,11 @@ class MyCustomDataset(Dataset):
     def __getitem__(self, index):
         buffer, label = self.training_data[index]
         images = []
-        for i in range(64):
+        for i in range(16):
             path = buffer[i]
             #print("PATH: ", path)
             img = np.array(cv2.imread(path))
-            img = cv2.resize(img, (224, 224))
+            img = cv2.resize(img, (112, 112))
             img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
             #img = img/255
             images.append(img)
@@ -69,7 +69,7 @@ class MyCustomDataset(Dataset):
             for video in self.video_id_dictionary[label]:
                 sum_count += 1
         return sum_count
-    
+
     def to_tensor(self, buffer):
         return torch.from_numpy(buffer.transpose(3, 0, 1, 2))
 
@@ -77,7 +77,7 @@ class MyCustomDataset(Dataset):
     # 1. Load only 16 frames into the buffer.
     # 2. Resize each frame to 224?
     # 3. One video has a label. So a batch of 16 frames is assigned a class.
-    def make_training_data(self, labels_x,frame_location,buffer_size = 64,image_height = 112, image_width = 112):
+    def make_training_data(self, labels_x,frame_location,buffer_size = 16,image_height = 112, image_width = 112):
 
         data_directory = ("{}/{}".format(frame_location, len(labels_x)))
         num_labels = len(labels_x)
@@ -98,7 +98,7 @@ class MyCustomDataset(Dataset):
                         save_start = (np.ceil(number_of_frames/save_frequency)-buffer_size)*save_frequency
                 except Exception as e:
                     print(e)
-                to_repeat = False   
+                to_repeat = False
                 if number_of_frames < buffer_size:
                     repeat = buffer_size - number_of_frames
                     to_repeat = True
@@ -139,7 +139,7 @@ class MyCustomDataset(Dataset):
                 #     print("video:",video ,len(buffer))
                 #     print(f"Video:", video, "Number of frames:", number_of_frames, "Save_frequency:", save_frequency, "Save start:", save_start)
                 self.training_data.append([(np.array(buffer)),self.labels_iterated[label]])
-        
+
 
     def Categories(self, category,frame_location):
         # Creating a list for 100, 200, 500, 1000 and 2000 classes with the highest amount of videos.
@@ -165,13 +165,13 @@ class MyCustomDataset(Dataset):
         if category == "labels_100":
             self.labels_x = labels_100
         elif category == "labels_200":
-            self.labels_x = labels_100
+            self.labels_x = labels_200
         elif category == "labels_500":
-            self.labels_x = labels_100
+            self.labels_x = labels_500
         elif category == "labels_1000":
-            self.labels_x = labels_100
+            self.labels_x = labels_1000
         elif category == "labels_2000":
-            self.labels_x = labels_100
+            self.labels_x = labels_2000
 
         # Assigning an integer to each class.
         counter = 0
@@ -185,5 +185,3 @@ class MyCustomDataset(Dataset):
                 self.inv_video_id_dictionary[video] = k
 
         self.make_training_data(self.labels_x, frame_location)
-
-
