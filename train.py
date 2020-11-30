@@ -24,28 +24,36 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
-buffer_size = 16
-#dataset = MyCustomDataset(category='labels_100')
+buffer_size = 64
+dataset = MyCustomDataset(category='labels_100')
 
-dataset = MyCustomDataset(category='labels_100',json_file_path="/home/marius/Documents/Projects/WLASL_v0.3.json", frame_location="/home/marius/Documents/Projects/Processed_data")
+#dataset = MyCustomDataset(category='labels_2000',json_file_path="/home/marius/Documents/Projects/WLASL_v0.3.json", frame_location="/home/marius/Documents/Projects/Processed_data")
 
 dataset_size = (len(dataset))
 
 val_size = int(np.floor(dataset_size * 0.2))
 train_size = int(dataset_size - val_size)
 trainset, validset = random_split(dataset, [train_size, val_size])
-dataloader_train = DataLoader(trainset, batch_size=1, shuffle=True, num_workers=4)
-dataloader_val = DataLoader(validset, batch_size=1, shuffle=True, num_workers=4)
+dataloader_train = DataLoader(trainset, batch_size=20, shuffle=True, num_workers=4)
+dataloader_val = DataLoader(validset, batch_size=20, shuffle=True, num_workers=4)
 #net = InceptionI3d(num_classes=400)
-net = C3D(num_classes = 100, pretrained = False)
+#net = C3D(num_classes = 100, pretrained = False)
 #net.load_state_dict(torch.load('Model/rgb_imagenet.pt'))
 #net.replace_logits(100)
-net = nn.DataParallel(net)
+net = ConvLSTM(
+        num_classes=2000,
+        latent_dim=512,
+        lstm_layers=1,
+        hidden_dim=1024,
+        bidirectional=True,
+        attention=True,
+    )
+#net = nn.DataParallel(net)
 net = net.to(device)
 
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=0.001,momentum = 0.9,weight_decay=5e-4)
+optimizer = optim.Adam(net.parameters(), lr=1e-5)
 criterion = criterion.to(device)
 scheduler = optim.lr_scheduler.StepLR(optimizer,step_size = 10,gamma =0.1)
 def accuracy(ys, ts):
@@ -73,7 +81,7 @@ with open(filename,'w') as csvfile:
         for i,(inputs, labels) in enumerate(dataloader_train):
 
             # get the inputs; data is a list of [inputs, labels]
-            inputs = inputs.view(-1,3,buffer_size,112,112)
+            inputs = inputs.view(-1,buffer_size,3,224,224)
             inputs = inputs.float()
 
             #for j in range(len(inputs)):
@@ -90,8 +98,7 @@ with open(filename,'w') as csvfile:
             labels = labels.to(device)
             # zero the parameter gradients
             optimizer.zero_grad()
-
-            #forward + backward + optimize
+            net.lstm.reset_hidden_state()            #forward + backward + optimize
 
             outputs = net(inputs)
             #rgb_score, rgb_logits = outputs
@@ -119,10 +126,11 @@ with open(filename,'w') as csvfile:
         running_acc = 0
         for i, (inputs,labels) in enumerate(dataloader_val):
             with torch.no_grad():
-                inputs = inputs.view(-1,3,buffer_size,112,112)
+                inputs = inputs.view(-1,buffer_size,3,224,224)
                 inputs = inputs.float()
                 inputs = inputs.to(device)
                 labels = labels.to(device)
+                lstm.reset_hidden_state()
                 outputs = net(inputs)
                 prediction = outputs
                 #rgb_score, rgb_logits = outputs

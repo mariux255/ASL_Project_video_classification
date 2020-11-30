@@ -41,11 +41,11 @@ class MyCustomDataset(Dataset):
     def __getitem__(self, index):
         buffer, label = self.training_data[index]
         images = []
-        for i in range(16):
+        for i in range(64):
             path = buffer[i]
             #print("PATH: ", path)
             img = np.array(cv2.imread(path))
-            img = cv2.resize(img, (112, 112))
+            img = cv2.resize(img, (224, 224))
             img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
             #img = img/255
             images.append(img)
@@ -77,7 +77,7 @@ class MyCustomDataset(Dataset):
     # 1. Load only 16 frames into the buffer.
     # 2. Resize each frame to 224?
     # 3. One video has a label. So a batch of 16 frames is assigned a class.
-    def make_training_data(self, labels_x,frame_location,buffer_size = 16,image_height = 112, image_width = 112):
+    def make_training_data(self, labels_x,frame_location,buffer_size = 64,image_height = 112, image_width = 112):
 
         data_directory = ("{}/{}".format(frame_location, len(labels_x)))
         num_labels = len(labels_x)
