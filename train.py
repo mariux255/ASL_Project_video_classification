@@ -18,6 +18,7 @@ from Model.cnnlstm import ConvLSTM
 from Model.pytorch_i3d import InceptionI3d
 from Model.I3D_Pytorch import I3D
 from torch.utils.data import random_split
+from functions import *
 
 
 import matplotlib.pyplot as plt
@@ -40,20 +41,42 @@ dataloader_val = DataLoader(validset, batch_size=20, shuffle=True, num_workers=4
 #net = C3D(num_classes = 100, pretrained = False)
 #net.load_state_dict(torch.load('Model/rgb_imagenet.pt'))
 #net.replace_logits(100)
-net = ConvLSTM(
-        num_classes=2000,
-        latent_dim=512,
-        lstm_layers=1,
-        hidden_dim=1024,
-        bidirectional=True,
-        attention=True,
-    )
+# Create model
+# EncoderCNN architecture
+CNN_fc_hidden1, CNN_fc_hidden2 = 1024, 768
+CNN_embed_dim = 512   # latent dim extracted by 2D CNN
+res_size = 224        # ResNet image size
+dropout_p = 0.0       # dropout probability
+
+# DecoderRNN architecture
+RNN_hidden_layers = 3
+RNN_hidden_nodes = 512
+RNN_FC_dim = 256
+cnn_encoder = ResCNNEncoder(fc_hidden1=CNN_fc_hidden1, fc_hidden2=CNN_fc_hidden2, drop_p=dropout_p, CNN_embed_dim=CNN_embed_dim).to(device)
+rnn_decoder = DecoderRNN(CNN_embed_dim=CNN_embed_dim, h_RNN_layers=RNN_hidden_layers, h_RNN=RNN_hidden_nodes, 
+                         h_FC_dim=RNN_FC_dim, drop_p=dropout_p, num_classes=100).to(device)
 #net = nn.DataParallel(net)
-net = net.to(device)
+if torch.cuda.device_count() > 1:
+    print("Using", torch.cuda.device_count(), "GPUs!")
+    cnn_encoder = nn.DataParallel(cnn_encoder)
+    rnn_decoder = nn.DataParallel(rnn_decoder)
+
+    # Combine all EncoderCNN + DecoderRNN parameters
+    crnn_params = list(cnn_encoder.module.fc1.parameters()) + list(cnn_encoder.module.bn1.parameters()) + \
+                  list(cnn_encoder.module.fc2.parameters()) + list(cnn_encoder.module.bn2.parameters()) + \
+                  list(cnn_encoder.module.fc3.parameters()) + list(rnn_decoder.parameters())
+
+elif torch.cuda.device_count() == 1:
+    print("Using", torch.cuda.device_count(), "GPU!")
+    # Combine all EncoderCNN + DecoderRNN parameters
+    crnn_params = list(cnn_encoder.fc1.parameters()) + list(cnn_encoder.bn1.parameters()) + \
+                  list(cnn_encoder.fc2.parameters()) + list(cnn_encoder.bn2.parameters()) + \
+                  list(cnn_encoder.fc3.parameters()) + list(rnn_decoder.parameters())
+#net = net.to(device)
 
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(net.parameters(), lr=1e-5)
+optimizer = optim.Adam(crnn_params.parameters(), lr=1e-3)
 criterion = criterion.to(device)
 scheduler = optim.lr_scheduler.StepLR(optimizer,step_size = 10,gamma =0.1)
 def accuracy(ys, ts):
@@ -67,7 +90,7 @@ def accuracy(ys, ts):
 
 now = datetime.now()
 filename = "{}".format(now.strftime("%H:%M:%S") + ".csv")
-title = ['{}'.format(net)]
+#title = ['{}'.format(net)]
 headers = ['ID', 'Type','Epoch','Loss','Accuracy']
 with open(filename,'w') as csvfile:
     Identification = 1
@@ -75,7 +98,8 @@ with open(filename,'w') as csvfile:
     csvwriter.writerow(headers)
     for epoch in range(30):  # loop over the dataset multiple times
 
-        net.train()
+        cnn_encoder.train()
+        rnn_decoder.train()
         training_loss = 0.0
         running_acc = 0
         for i,(inputs, labels) in enumerate(dataloader_train):
@@ -98,10 +122,9 @@ with open(filename,'w') as csvfile:
             labels = labels.to(device)
             # zero the parameter gradients
             optimizer.zero_grad()
-            net.lstm.reset_hidden_state()            #forward + backward + optimize
+            #net.lstm.reset_hidden_state()            #forward + backward + optimize
 
-            outputs = net(inputs)
-            #rgb_score, rgb_logits = outputs
+            outputs = rnn_decoder(cnn_encoder(inputs))            #rgb_score, rgb_logits = outputs
             #outputs = rgb_logits
             #print(outputs.shape)
             #print(labels.shape)
@@ -121,7 +144,8 @@ with open(filename,'w') as csvfile:
                 csvwriter.writerow(['{}'.format(Identification),'{}'.format("Training"),'{}'.format(epoch),'{}'.format(training_loss/(i+1)),'{}'.format(running_acc/(i+1))])
                 print(f"Training phase, Epoch: {epoch}. Loss: {training_loss/(i+1)}. Accuracy: {running_acc/(i+1)}.")
                 Identification += 1
-        net.eval()
+        cnn_encoder.eval()
+        rnn_decoder.eval()
         valError = 0
         running_acc = 0
         for i, (inputs,labels) in enumerate(dataloader_val):
@@ -130,8 +154,8 @@ with open(filename,'w') as csvfile:
                 inputs = inputs.float()
                 inputs = inputs.to(device)
                 labels = labels.to(device)
-                lstm.reset_hidden_state()
-                outputs = net(inputs)
+                
+                outputs = rnn_decoder(cnn_encoder(inputs))
                 prediction = outputs
                 #rgb_score, rgb_logits = outputs
                 #prediction = rgb_logits
